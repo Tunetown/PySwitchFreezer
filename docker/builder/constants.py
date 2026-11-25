@@ -27,6 +27,17 @@ CIRCUITPYTHON_VERSION = "7.3.1"
 CIRCUITPYTHON_FOLDER = "/opt/circuitpython"                # sources in the image
 CIRCUITPYTHON_BOARD = "raspberry_pi_pico"                  # same RP2040 board as the official UF2 for the MIDI Captain
 
+# Names of the USB MIDI interfaces and ports (variables in USB_MIDI_SOURCE of CircuitPython), set like in PaintAudio's
+# firmware of the MIDI Captain (midicpPico.uf2 = official CircuitPython 7.3.1 with only these names changed), so the
+# device looks the same to the computer (claude/004 TBC 4). Empty dict: official names of CircuitPython.
+USB_MIDI_SOURCE = "shared-module/usb_midi/__init__.c"
+USB_MIDI_NAMES = {
+    "midi_streaming_interface_name": "Midi Captain- MIDI",
+    "midi_audio_control_interface_name": "Midi Captain- MIDI ",       # trailing space as in midicpPico.uf2
+    "midi_in_jack_name": "Midi Captain- usb_midi.ports[0]",
+    "midi_out_jack_name": "Midi Captain- usb_midi.ports[0]",
+}
+
 # Repositories of libraries whose .mpy files contain no repository URL (package or module name -> URL)
 FALLBACK_REPOSITORIES = {
     "pymidibridge": "https://github.com/Tunetown/PyMidiBridge.git"
