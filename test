@@ -1,0 +1,13 @@
+#!/bin/bash
+#
+# Runs the unit tests of the build program (docker/tests) in the build container. Arguments are passed to unittest
+# (e.g. ./test -v). See claude/004 Build optimized UF2/SPEC.md.
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+COMPOSE_FILE="$ROOT/docker/compose.yaml"
+SERVICE="builder"
+
+docker compose -f "$COMPOSE_FILE" build --quiet "$SERVICE"
+exec docker compose -f "$COMPOSE_FILE" run --rm -T -w /work/docker "$SERVICE" python3 -m unittest discover -s tests -t . "$@"

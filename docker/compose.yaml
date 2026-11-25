@@ -1,0 +1,7 @@
+# Container of the PySwitch build (see ../build). Mounts the project root at /work.
+services:
+  builder:
+    build: .
+    image: pyswitch-builder
+    volumes:
+      - ..:/work

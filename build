@@ -1,0 +1,38 @@
+#!/bin/bash
+#
+# PySwitch build: fetches PySwitch from GitHub, runs its unit tests, builds the optimized firmware (CircuitPython 7.3.1
+# with PySwitch and the libraries it uses frozen into flash) and measures its RAM on an emulated RP2040.
+#
+# This file only starts the build program (docker/builder, Python) in its container; the first run builds the image
+# (about 30 minutes). Usage and options: ./build --help
+# Constants (repository URL, default branch, folders, ...): docker/builder/constants.py
+# Specification: claude/004 Build optimized UF2/SPEC.md
+#
+# Needs: bash, Docker.
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")" && pwd)"         # project folder (mounted at /work in the container)
+COMPOSE_FILE="$ROOT/docker/compose.yaml"      # container of the build
+SERVICE="builder"                             # service in COMPOSE_FILE
+
+command -v docker > /dev/null || { echo "ERROR: Docker is needed" >&2; exit 1; }
+
+# Folder options are given on the host (relative to the current folder): converted to paths in the container
+ARGS=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --sources|--output)
+            path="$(realpath -m "$2")"
+            case "$path" in
+                "$ROOT"/*) ARGS+=("$1" "/work/${path#"$ROOT"/}") ;;
+                *)         echo "ERROR: $2 is not inside the project folder $ROOT" >&2; exit 1 ;;
+            esac
+            shift 2 ;;
+        *)
+            ARGS+=("$1"); shift ;;
+    esac
+done
+
+docker compose -f "$COMPOSE_FILE" build --quiet "$SERVICE"
+exec docker compose -f "$COMPOSE_FILE" run --rm -T -w /work/docker "$SERVICE" python3 -m builder --owner "$(id -u):$(id -g)" "${ARGS[@]}"
