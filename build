@@ -6,7 +6,7 @@
 # This file only starts the build program (docker/builder, Python) in its container; the first run builds the image
 # (about 30 minutes). Usage and options: ./build --help
 # Constants (repository URL, default branch, folders, ...): docker/builder/constants.py
-# Specification: claude/004 Build optimized UF2/SPEC.md
+# Documentation: README.md
 #
 # Needs: bash, Docker.
 
@@ -34,5 +34,8 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+echo "Preparing the build container (the first run builds it: about 30 minutes)"
 docker compose -f "$COMPOSE_FILE" build --quiet "$SERVICE"
-exec docker compose -f "$COMPOSE_FILE" run --rm -T -w /work/docker "$SERVICE" python3 -m builder --owner "$(id -u):$(id -g)" "${ARGS[@]}"
+
+# stderr of the build program into stdout, so the output stays in order
+exec docker compose -f "$COMPOSE_FILE" run --rm -T -w /work/docker "$SERVICE" sh -c 'exec python3 -m builder "$@" 2>&1' build --owner "$(id -u):$(id -g)" "${ARGS[@]}"

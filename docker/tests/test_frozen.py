@@ -86,3 +86,20 @@ class TestFrozen(TempTestCase):
         with patch("builder.libraries.clone", side_effect = clone), patch("builder.shell.run"):
             with self.assertRaises(shell.BuildError):
                 frozen.prepare(self.make_content(), self.path("out"))
+
+    def test_debug_copy(self):
+        self.prepare()
+        with patch("builder.libraries.clone") as clone, patch("builder.shell.run") as run:
+            frozen.debug_copy(self.path("out"), self.path("debug"))
+        clone.assert_not_called()                                           # no second download
+        self.assertIn("import _ramprobe", read_text(self.path("debug", "pyswitch", "process.py")))
+        self.assertEqual(read_text(self.path("out", "pyswitch", "process.py")), PROCESS)     # release unchanged
+        self.assertEqual(read_text(self.path("debug", "misc", "neopixel.py")), "# source of neopixel.py 6.3.6\n")
+        self.assertTrue(any("init" in c.args[0] for c in run.call_args_list))
+
+    def test_debug_copy_without_memory_lines(self):
+        self.prepare(process = "x = 1\n")
+        with patch("builder.shell.run"):
+            with self.assertRaises(frozen.NoMemoryMonitoring):
+                frozen.debug_copy(self.path("out"), self.path("debug"))
+        self.assertFalse(os.path.exists(self.path("debug")))

@@ -18,6 +18,7 @@ FIRMWARE_NAME = "PySwitch.uf2"                             # firmware in the out
 DRIVE_FOLDER_NAME = "drive"                                # drive files in the output folder
 REPORT_NAME = "REPORT.md"                                  # report in the output folder
 LOGS_FOLDER_NAME = "logs"                                  # logs in the output folder
+TEST_REPORT_FOLDER_NAME = "test_report"                    # coverage report (HTML) of the unit tests in the output folder
 
 # Files of PySwitch's content folder which are not copied to the drive (only used by the web emulator)
 WEB_ONLY_FILES = ("toc.php",)
@@ -29,7 +30,7 @@ CIRCUITPYTHON_BOARD = "raspberry_pi_pico"                  # same RP2040 board a
 
 # Names of the USB MIDI interfaces and ports (variables in USB_MIDI_SOURCE of CircuitPython), set like in PaintAudio's
 # firmware of the MIDI Captain (midicpPico.uf2 = official CircuitPython 7.3.1 with only these names changed), so the
-# device looks the same to the computer (claude/004 TBC 4). Empty dict: official names of CircuitPython.
+# device looks the same to the computer. Empty dict: official names of CircuitPython.
 USB_MIDI_SOURCE = "shared-module/usb_midi/__init__.c"
 USB_MIDI_NAMES = {
     "midi_streaming_interface_name": "Midi Captain- MIDI",

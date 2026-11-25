@@ -11,11 +11,12 @@ TEST_PACKAGE = "pyswitch_test"
 
 # Result of the unit tests
 class TestResult:
-    def __init__(self, ok, tests, coverage, output):
+    def __init__(self, ok, tests, coverage, output, html = None):
         self.ok = ok                    # all tests passed
         self.tests = tests              # number of tests run
         self.coverage = coverage        # total coverage (e.g. "98%"), or "" if the tests failed
         self.output = output            # output of unittest
+        self.html = html                # folder of the coverage report (HTML), or None if not created
 
     # One line for the report
     def summary(self):
@@ -26,7 +27,8 @@ class TestResult:
 
 # Runs the Python unit tests of PySwitch with coverage, in the layout of PySwitch's own test container
 # (test/compose.yaml: <root>/lib and <root>/test). lib is copied, not linked (coverage would not count linked files).
-def run(pyswitch):
+# With html, the coverage report is also written as HTML into this folder (like test/run of PySwitch; also when tests fail).
+def run(pyswitch, html = None):
     root = tempfile.mkdtemp()
     try:
         shutil.copytree(os.path.join(pyswitch, "content", "lib"), os.path.join(root, "lib"), ignore = shutil.ignore_patterns("__pycache__"))
@@ -44,12 +46,17 @@ def run(pyswitch):
         ran = re.search(r"Ran ([0-9]+) tests?", output)
         tests = int(ran.group(1)) if ran else 0
 
+        html_folder = None
+        if html:
+            created = shell.run(["python3", "-m", "coverage", "html", "--rcfile=" + rc_file, "-d", os.path.abspath(html)], cwd = root, capture = True, check = False)
+            html_folder = os.path.abspath(html) if created.returncode == 0 else None
+
         if result.returncode != 0:
-            return TestResult(False, tests, "", output)
+            return TestResult(False, tests, "", output, html_folder)
 
         report = shell.run(["python3", "-m", "coverage", "report", "--rcfile=" + rc_file], cwd = root, capture = True).stdout
         total = re.search(r"^TOTAL\s.*?([0-9]+%)\s*$", report, re.M)
-        return TestResult(True, tests, total.group(1) if total else "?", output)
+        return TestResult(True, tests, total.group(1) if total else "?", output, html_folder)
 
     finally:
         shutil.rmtree(root, ignore_errors = True)

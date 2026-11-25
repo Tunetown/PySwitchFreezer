@@ -1,4 +1,4 @@
-# Image of the PySwitch build (see ../build and claude/004 Build optimized UF2/SPEC.md): everything in one image, so the
+# Image of the PySwitch build (see ../build and ../README.md): everything in one image, so the
 # build program (builder/, Python) can run all steps: CircuitPython 7.3.1 build with frozen modules, the Python unit
 # tests of PySwitch (Python >= 3.12) and the RAM measurement on an emulated RP2040 (Node, rp2040js).
 

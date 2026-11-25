@@ -47,7 +47,7 @@ class TestFirmware(TempTestCase):
         self.assertFalse(os.path.exists(self.path("out.uf2")))
 
     def test_usb_midi_names_like_paintaudio(self):
-        # The names of PaintAudio's midicpPico.uf2 (claude/004 TBC 4)
+        # The names of PaintAudio's midicpPico.uf2
         self.assertEqual(firmware.USB_MIDI_NAMES, {
             "midi_streaming_interface_name": "Midi Captain- MIDI",
             "midi_audio_control_interface_name": "Midi Captain- MIDI ",

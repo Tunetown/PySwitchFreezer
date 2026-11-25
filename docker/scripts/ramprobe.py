@@ -1,4 +1,4 @@
-# RAM probe (origin: claude/002 tools/rp2040_ram): copied to the emulated drive as _ramprobe.py by measure.mts and imported by
+# RAM probe: copied to the emulated drive as _ramprobe.py by measure.mts and imported by
 # lib/pyswitch/process.py right after Memory.start(). Adds raw byte values and the largest free block to the
 # output of pyswitch.stats.Memory. Its own RAM is part of every measurement (constant, so differences stay exact).
 # Used by ../../build (RAM measurement of the debug firmware).

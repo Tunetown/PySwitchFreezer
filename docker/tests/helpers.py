@@ -2,6 +2,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 
 # Writes a file (creating its folders)
 def write(path, content = "", binary = False):
@@ -18,13 +19,21 @@ def mpy(version = None, url = None):
         data += bytes([len(url)]) + url.encode() + b"\x00"
     return data + b"\x00" * 4
 
-# Test case with a temporary folder (self.tmp), removed after each test
+# Test case with a temporary folder (self.tmp), removed after each test. The output of the build program (print) is
+# caught, so the test run stays readable; self.printed() returns it.
 class TempTestCase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
+        self._print = patch("builtins.print")
+        self._printed = self._print.start()
 
     def tearDown(self):
+        self._print.stop()
         shutil.rmtree(self.tmp, ignore_errors = True)
+
+    # Everything printed so far, one line per print call
+    def printed(self):
+        return "\n".join(" ".join(str(a) for a in c.args) for c in self._printed.call_args_list)
 
     # Path inside the temporary folder
     def path(self, *parts):

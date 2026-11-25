@@ -1,6 +1,6 @@
 /**
- * RAM measurement of a PySwitch firmware on an emulated RP2040 (rp2040js), used by ../../build (runs in the runner
- * container). Derived from the RAM tool of claude/002 (tools/rp2040_ram/measure.mts).
+ * RAM measurement of a PySwitch firmware on an emulated RP2040 (rp2040js), used by ../../build (runs in the build
+ * container).
  *
  * The firmware must be a debug build (memory monitoring of PySwitch switched on and the RAM probe imported in the frozen
  * pyswitch/process.py, see prepare_frozen.py); the drive folder must contain _ramprobe.py (ramprobe.py).
@@ -23,7 +23,7 @@ import { ConsoleLogger, LogLevel } from '/opt/rp2040js/src/utils/logging.js';
 import { bootromB1 } from '/opt/rp2040js/demo/bootrom.js';
 import { loadCircuitpythonFlashImage, loadUF2 } from '/opt/rp2040js/demo/load-flash.js';
 
-// Size of the CIRCUITPY drive in kB (the MIDI Captain has more than 7 MB; claude/002 SPEC 2.1)
+// Size of the CIRCUITPY drive in kB (the MIDI Captain has more than 7 MB)
 const DRIVE_SIZE_KB = 10240;
 
 // Number of console lines shown when the measurement fails
@@ -78,7 +78,7 @@ function main() {
     }
 
     // SPI (display): complete every byte after its real transfer time (with immediate completion, CircuitPython's
-    // DMA transfers lose bytes and hang; claude/002 SPEC 2.2)
+    // DMA transfers lose bytes and hang)
     for (const spi of mcu.spi) {
         const alarm = simulator.clock.createAlarm(() => spi.completeTransmit(0));
         spi.onTransmit = () => {

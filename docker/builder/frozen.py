@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from . import files, libraries, shell
+from . import files, libraries, output, shell
 from .constants import MEMORY_LINES, PROBE_MODULE
 
 # Raised when the debug firmware cannot be prepared (process.py has no commented memory monitoring lines)
@@ -10,7 +10,7 @@ class NoMemoryMonitoring(shell.BuildError):
 
 # Prepares the folder with the modules to freeze into the firmware:
 #   - PySwitch (content/lib/pyswitch)
-#   - every library of content/lib that PySwitch imports (claude/003 TBC 12). Libraries shipped as .mpy are replaced by
+#   - every library of content/lib that PySwitch imports. Libraries shipped as .mpy are replaced by
 #     their sources, in the version of each .mpy file (version and repository URL are read from the .mpy file itself;
 #     the values of the package are used if a file has none).
 # With debug, the memory monitoring is switched on in pyswitch/process.py and the RAM probe is imported (RAM measurement).
@@ -63,7 +63,10 @@ def _prepare_library(lib, entry, out, repositories):
             raise shell.BuildError(f"No repository known for { f } (add it to FALLBACK_REPOSITORIES in constants.py)")
 
         if (url, version) not in repositories:
+            output.info(f"  fetching the source of { name }: { url } { version or '(no version)' }")
             repositories[(url, version)] = libraries.clone(url, version)
+            if repositories[(url, version)][1] != version:
+                output.info(f"  -> using the { repositories[(url, version)][1] }")
         repo, ref = repositories[(url, version)]
 
         module = os.path.splitext(os.path.basename(f))[0]
@@ -76,6 +79,19 @@ def _prepare_library(lib, entry, out, repositories):
         ret.append({ "package": name, "file": f[:-4] + ".py", "source": url + " " + os.path.relpath(source, repo), "version": version or "", "ref": ref })
 
     return ret
+
+# Makes the modules of the debug firmware (RAM measurement) from the prepared release modules: a copy with the memory
+# monitoring switched on (no second download of the library sources). Raises NoMemoryMonitoring if process.py has no
+# memory monitoring lines.
+def debug_copy(release, out):
+    shutil.rmtree(out, ignore_errors = True)
+    shutil.copytree(release, out, ignore = shutil.ignore_patterns(".git"))
+    try:
+        _add_measurement_changes(os.path.join(out, "pyswitch", "process.py"))
+    except NoMemoryMonitoring:
+        shutil.rmtree(out, ignore_errors = True)
+        raise
+    _make_git_repository(out)
 
 # Switches on the memory monitoring in process.py and adds the import of the RAM probe
 def _add_measurement_changes(process):

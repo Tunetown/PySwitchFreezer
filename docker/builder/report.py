@@ -1,6 +1,6 @@
 import datetime
 
-from .constants import CIRCUITPYTHON_BOARD, CIRCUITPYTHON_VERSION, FIRMWARE_NAME
+from .constants import CIRCUITPYTHON_BOARD, CIRCUITPYTHON_VERSION, FIRMWARE_NAME, TEST_REPORT_FOLDER_NAME
 
 # Returns a column-aligned Markdown table
 def table(header, rows):
@@ -28,16 +28,20 @@ def package_rows(modules):
     return [(f"`{ name }`", str(p["files"]) if p["files"] else "all", ", ".join(sorted(p["sources"]))) for name, p in sorted(packages.items())]
 
 # Returns the text of REPORT.md
-def text(url, branch, commit, tests, flash, modules, drive_entries, measurement, configuration, now = None):
+def text(url, sources, tests, flash, modules, drive_entries, measurement, configuration, now = None):
     now = now or datetime.datetime.now()
-    parts = [f"# PySwitch build report\n\nBuilt { now.strftime('%Y-%m-%d %H:%M') } by `build` (claude/004 Build optimized UF2).\n"]
+    parts = [f"# PySwitch build report\n\nBuilt { now.strftime('%Y-%m-%d %H:%M') } by `build`.\n"]
 
     parts.append("## Sources\n\n" + table(("Item", "Value"), [
-        ("Repository", url), ("Branch", branch), ("Commit", commit),
+        ("Origin", f"fetched from { url }" if sources.fetched else "existing sources folder, used as it is"),
+        ("Branch", sources.branch or "unknown"), ("Commit", sources.commit or "unknown"),
+        ("PySwitch version", sources.version or "unknown"),
         ("Firmware", f"CircuitPython { CIRCUITPYTHON_VERSION } ({ CIRCUITPYTHON_BOARD }) with frozen modules"),
     ]) + "\n")
 
     parts.append(f"## Unit tests\n\n{ tests.summary() }\n")
+    if tests.html:
+        parts.append(f"Coverage report: [{ TEST_REPORT_FOLDER_NAME }/index.html]({ TEST_REPORT_FOLDER_NAME }/index.html)\n")
 
     if flash:
         parts.append("## Firmware\n\n" + table(("Item", "Value"), [
@@ -49,7 +53,7 @@ def text(url, branch, commit, tests, flash, modules, drive_entries, measurement,
     parts.append("## Frozen modules\n\nPySwitch and every library of `content/lib` it imports; libraries from their sources in the versions of the `.mpy` files. Details: `logs/frozen_modules.json`.\n\n"
                  + table(("Package", "Files", "Source"), package_rows(modules)) + "\n")
 
-    parts.append("## Drive files (`drive/`)\n\nCopy to the CIRCUITPY drive:\n\n" + "\n".join(f"- `{ e }`" for e in drive_entries) + "\n")
+    parts.append("## Drive files (`drive/`)\n\nCopy to the device drive (MIDI Captain: `MIDICAPTAIN`, other boards: `CIRCUITPY`):\n\n" + "\n".join(f"- `{ e }`" for e in drive_entries) + "\n")
 
     if measurement:
         m = measurement
@@ -59,6 +63,6 @@ def text(url, branch, commit, tests, flash, modules, drive_entries, measurement,
             ("Minimum free during the run", size(m["minFree"])), ("Result", m["status"]),
         ]) + "\n")
     else:
-        parts.append("## RAM measurement\n\nNot measured (see the output of `build`).\n")
+        parts.append("## RAM measurement\n\nNot measured (switched on with `./build --measure`; needs the memory monitoring lines in `lib/pyswitch/process.py`).\n")
 
     return "\n".join(parts)

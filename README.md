@@ -1,6 +1,6 @@
 # Build an optimized UF2 image from PySwitch
 
-Builds an optimized UF2 image from PySwitch: one command fetches a branch of [PySwitch](https://github.com/Tunetown/PySwitch) from GitHub, runs its unit tests, builds a CircuitPython 7.3.1 firmware with PySwitch and its libraries already inside, and collects everything you need to copy onto the device. It also measures how much RAM is left on an emulated device and writes a report.
+Builds an optimized UF2 image from PySwitch: one command fetches a branch of [PySwitch](https://github.com/Tunetown/PySwitch) from GitHub, runs its unit tests, builds a CircuitPython 7.3.1 firmware with PySwitch and its libraries already inside, and collects everything you need to copy onto the device, and writes a report. Optionally (`--measure`) it also measures how much RAM is left on an emulated device.
 
 **Why**: normally CircuitPython compiles PySwitch on the device at every start and keeps the compiled program in RAM. In this firmware, PySwitch and its libraries are precompiled and stored in the flash memory of the chip, so **87.5 KiB more RAM** stay free for your configuration (compared to stock PySwitch 2.4.10).
 
@@ -26,14 +26,14 @@ Builds an optimized UF2 image from PySwitch: one command fetches a branch of [Py
 
     ./build
 
-Builds the branch `main`. The first run takes about 30 minutes (the Docker image with CircuitPython, the compiler and the emulator is built once); every later run takes about 2 minutes. When it is done:
+Builds the PySwitch sources in `pyswitch/` as they are; if there is no `pyswitch/` folder, the branch `main` is fetched from GitHub first. The first run takes about 30 minutes (the Docker image with CircuitPython, the compiler and the emulator is built once); every later run takes about 30 seconds (with `--measure` about 2.5 minutes). When it is done:
 
 1. Copy `output/PySwitch.uf2` to the device in bootloader mode (drive `RPI-RP2`, section 5).
 2. Copy the contents of `output/drive/` to the device drive (MIDI Captain: hold switch 1 while switching on; drive `MIDICAPTAIN`).
 
 Before the first installation: make a backup (section 5).
 
-`output/REPORT.md` shows what was built.
+The build shows every step with its duration and ends with `BUILD OK` or `BUILD FAILED` (with the step and the reason). `output/REPORT.md` shows what was built.
 
 
 ## 2. Requirements
@@ -52,35 +52,46 @@ Works on x86_64 and ARM64 (aarch64) machines. `git`, Python and the compilers ar
 
     ./build [<branch>] [options]
 
-| Argument / option    | Meaning                                                                                                                                                                           |
-|----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `<branch>`           | branch or tag of PySwitch to build (default: `main`)                                                                                                                              |
-| `--example <path>`   | measure the RAM with an example configuration instead of the default one (path relative to `examples/` of PySwitch); the drive files in the output keep the default configuration |
-| `--force`            | replace the sources folder even if it was not created by the build (section 12)                                                                                                   |
-| `--sources <folder>` | use another sources folder (default `pyswitch/`; must be inside this project folder)                                                                                              |
-| `--output <folder>`  | use another output folder (default `output/`; must be inside this project folder)                                                                                                 |
-| `--help`             | show the options                                                                                                                                                                  |
+| Argument / option    | Meaning                                                                                                                                                                                                    |
+|----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `<branch>`           | branch or tag of PySwitch to fetch into `pyswitch/`. Without it, an existing `pyswitch/` is built as it is (nothing is fetched or changed); if there is none, `main` is fetched                            |
+| `--measure`          | also measure the free RAM on an emulated RP2040 (section 8; off by default, takes about 2 minutes more)                                                                                                    |
+| `--example <path>`   | measure the RAM with an example configuration instead of the default one (path relative to `examples/` of PySwitch; switches on `--measure`); the drive files in the output keep the default configuration |
+| `--force`            | with a branch: replace `pyswitch/` even if it was not created by the build (it contains your own files: section 12)                                                                                        |
+| `--sources <folder>` | use another sources folder (default `pyswitch/`; must be inside this project folder)                                                                                                                       |
+| `--output <folder>`  | use another output folder (default `output/`; must be inside this project folder)                                                                                                                          |
+| `--help`             | show the options                                                                                                                                                                                           |
 
 Examples:
 
-    ./build                                            # main
-    ./build dev_midi                                   # another branch
-    ./build v2.4.10                                    # a tag
-    ./build main --example "Kemper Profiler/MIDICaptain 10/Expression Pedals and Wheel"
+    ./build                                            # pyswitch/ as it is (or main if there is no pyswitch/)
+    ./build dev_midi                                   # fetch another branch into pyswitch/
+    ./build v2.4.10                                    # fetch a tag
+    ./build --measure                                  # with RAM measurement
+    ./build --example "Kemper Profiler/MIDICaptain 10/Expression Pedals and Wheel"
 
-The build stops with an error message (and builds nothing) if the branch does not exist or the unit tests of the branch fail.
+**Sources folder `pyswitch/`**:
+
+| `pyswitch/`                  | `./build`          | `./build <branch>`                              |
+|------------------------------|--------------------|-------------------------------------------------|
+| does not exist               | fetches `main`     | fetches the branch                              |
+| fetched by an earlier build  | builds it as it is | replaces it by the branch                       |
+| your own (e.g. with changes) | builds it as it is | stops with a message (never deleted; `--force`) |
+
+The build stops with `BUILD FAILED` (and builds nothing more) if the branch does not exist or the unit tests fail; the message names the step and the reason. Details of each step are in `output/logs/`.
 
 
 ## 4. Output
 
 Everything is written to `output/` (deleted and created again on every run):
 
-| File / folder  | Content                                                                                                                                                                                              |
-|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `PySwitch.uf2` | the firmware: CircuitPython 7.3.1 with PySwitch and its libraries built in                                                                                                                           |
-| `drive/`       | the files for the device drive (section 5)                                                                                                                                                           |
-| `REPORT.md`    | sources (branch, commit), unit tests, flash use, frozen modules with versions, drive files, RAM measurement                                                                                          |
-| `logs/`        | details: `tests.txt` (unit test output), `build_release.log` / `build_debug.log` (firmware builds), `frozen_modules.json` (every frozen module with its source), `measurement.txt` (RAM measurement) |
+| File / folder  | Content                                                                                                                                                                                                                                      |
+|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `PySwitch.uf2` | the firmware: CircuitPython 7.3.1 with PySwitch and its libraries built in                                                                                                                                                                   |
+| `drive/`       | the files for the device drive (section 5)                                                                                                                                                                                                   |
+| `REPORT.md`    | sources (branch, commit), unit tests, flash use, frozen modules with versions, drive files, RAM measurement                                                                                                                                  |
+| `logs/`        | details: `tests.txt` (unit test output), `build_release.log` (firmware build), `frozen_modules.json` (every frozen module with its source); with `--measure` also `build_debug.log` (debug firmware) and `measurement.txt` (RAM measurement) |
+| `test_report/` | coverage report as HTML (open `index.html` in the browser) of the tests that ran last: PySwitch's unit tests (`./build`) or the tests of the build program (`./test`, section 10)                                                            |
 
 The PySwitch sources of the build are in `pyswitch/` (a shallow clone of the branch; replaced on the next run).
 
@@ -118,14 +129,14 @@ Other RP2040 boards: bootloader mode usually with the BOOT button held while con
 
 ## 6. What the build does
 
-| Step | What happens                                                                                                                                                                                                                        |
-|------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1    | **Fetch** the branch from GitHub into `pyswitch/`                                                                                                                                                                                   |
-| 2    | **Unit tests** of PySwitch (with coverage); if they fail, the build stops                                                                                                                                                           |
-| 3    | **Firmware**: PySwitch and the libraries it imports are compiled into CircuitPython 7.3.1 → `PySwitch.uf2`; a second, debug firmware with PySwitch's memory monitoring switched on is built for the measurement (not in the output) |
-| 4    | **Drive files**: the `content/` folder of PySwitch without the built-in modules → `drive/`                                                                                                                                          |
-| 5    | **RAM measurement**: the debug firmware and the drive files run on an emulated RP2040                                                                                                                                               |
-| 6    | **Report**: `REPORT.md`                                                                                                                                                                                                             |
+| Step | What happens                                                                                                                                                                                                                                           |
+|------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1    | **Fetch** the branch from GitHub into `pyswitch/`                                                                                                                                                                                                      |
+| 2    | **Unit tests** of PySwitch (with coverage), coverage report as HTML in `test_report/`; if they fail, the build stops                                                                                                                                   |
+| 3    | **Firmware**: PySwitch and the libraries it imports are compiled into CircuitPython 7.3.1 → `PySwitch.uf2`; with `--measure` also a second, debug firmware with PySwitch's memory monitoring switched on (only for the measurement, not in the output) |
+| 4    | **Drive files**: the `content/` folder of PySwitch without the built-in modules → `drive/`                                                                                                                                                             |
+| 5    | **RAM measurement** (only with `--measure`): the debug firmware and the drive files run on an emulated RP2040                                                                                                                                          |
+| 6    | **Report**: `REPORT.md`                                                                                                                                                                                                                                |
 
 **CircuitPython itself is not changed**, except for the names of the USB MIDI port, which are set like in PaintAudio's firmware ("Midi Captain- MIDI"; setting in `docker/builder/constants.py`). Building Python modules into the firmware ("freezing") is a standard feature of the CircuitPython build, also used by official boards for their libraries. The firmware is a complete CircuitPython 7.3.1; PySwitch and its libraries are additions.
 
@@ -145,7 +156,7 @@ Other RP2040 boards: bootloader mode usually with the BOOT button held while con
 
 ## 8. The report and the RAM measurement
 
-The RAM is measured on an **emulated RP2040** (the [rp2040js](https://github.com/wokwi/rp2040js) emulator running the real CircuitPython firmware): the same firmware, the same bytecode and the same memory management as on the device, so the values after loading match the device exactly. The measurement runs the debug firmware (identical to `PySwitch.uf2`, plus PySwitch's memory monitoring) with the drive files, without a connected MIDI device, for 10 seconds of emulated time after loading.
+With `./build --measure` (off by default) the RAM is measured on an **emulated RP2040** (the [rp2040js](https://github.com/wokwi/rp2040js) emulator running the real CircuitPython firmware): the same firmware, the same bytecode and the same memory management as on the device, so the values after loading match the device exactly. The measurement runs the debug firmware (identical to `PySwitch.uf2`, plus PySwitch's memory monitoring) with the drive files, without a connected MIDI device, for 10 seconds of emulated time after loading.
 
 | Value in the report         | Meaning                                                                           |
 |-----------------------------|-----------------------------------------------------------------------------------|
@@ -164,7 +175,7 @@ The measurement needs the two commented memory monitoring lines in PySwitch's `l
 ## 9. Developing PySwitch with this firmware
 
 1. Change the Python code of PySwitch as usual (unit tests and the web emulator work on the `.py` files as before).
-2. Push the branch and run `./build <branch>`.
+2. Run `./build`: it builds your sources in `pyswitch/` as they are (nothing needs to be pushed). Or push a branch and run `./build <branch>` (needs a `pyswitch/` created by the build, or none).
 3. Install the output (section 5).
 
 To **try a change on the device without a new firmware**, copy PySwitch's `content/lib/pyswitch` to the **root folder** of the drive (`/pyswitch`, not `/lib/pyswitch`): it overrides the built-in version. This needs as much RAM as PySwitch without this firmware, so large configurations may not fit. Delete `/pyswitch` afterwards.
@@ -175,7 +186,7 @@ To **try a change on the device without a new firmware**, copy PySwitch's `conte
     ./test            # unit tests of the build program
     ./test -v         # with the name of every test
 
-Runs the unit tests of the build program (`docker/tests`) in the build container. They replace `git`, the CircuitPython build and the emulator by mocks, so they need no network and take about a second. The results are shown in the terminal. (The unit tests of **PySwitch** are run by `./build`, see `output/logs/tests.txt`.)
+Runs the unit tests of the build program (`docker/tests`) in the build container. They replace `git`, the CircuitPython build and the emulator by mocks, so they need no network and take about a second. Every test is listed (`-v` by default), then the total coverage and `TESTS OK` or `TESTS FAILED`; the coverage report (HTML) replaces `output/test_report/`. (The unit tests of **PySwitch** are run by `./build`, see `output/logs/tests.txt`; their coverage report also goes to `output/test_report/`, so the folder always holds the report of the tests that ran last.)
 
 
 ## 11. Project layout and configuration
@@ -197,18 +208,21 @@ Runs the unit tests of the build program (`docker/tests`) in the build container
 
 ## 12. Troubleshooting
 
-| Message / problem                                                             | Cause and solution                                                                                                                                                             |
-|-------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `pyswitch exists and was not created by the build. Remove it or use --force.` | the sources folder contains files the build did not create (for example your own work); the build does not delete them. Move them away, or use `--force` to replace the folder |
-| `Remote branch ... not found` (then `Command failed (128): git clone ...`)    | the branch or tag does not exist on GitHub (or is not pushed yet)                                                                                                              |
-| `Example not found: ...`                                                      | the path given with `--example` does not exist in `examples/` of the branch                                                                                                    |
-| `Unit tests failed: no firmware built`                                        | the branch's unit tests fail; details in `output/logs/tests.txt`                                                                                                               |
-| `No repository known for ...`                                                 | a library's `.mpy` files contain no repository URL: add it to `FALLBACK_REPOSITORIES` in `docker/builder/constants.py`                                                         |
-| `Source of ... not found`                                                     | a library's repository has no source file with that name at that version                                                                                                       |
-| `Firmware build failed`                                                       | details in `output/logs/build_release.log` (for example: the firmware does not fit into flash)                                                                                 |
-| No RAM measurement                                                            | the branch has no memory monitoring lines in `process.py` (section 8)                                                                                                          |
-| First run takes long                                                          | the Docker image is built once (about 30 minutes)                                                                                                                              |
-| `... is not inside the project folder`                                        | `--sources` and `--output` must be inside this folder (the container only sees this folder)                                                                                    |
+| Message / problem                                                                           | Cause and solution                                                                                                                                                                                         |
+|---------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `pyswitch/ exists and was not created by the build, so it is not replaced by branch ...`    | you gave a branch, but `pyswitch/` contains your own sources; the build never deletes them. Build them as they are with `./build` (without a branch), move the folder away, or use `--force` to replace it |
+| `Remote branch ... not found` (then `BUILD FAILED ... Command failed (128): git clone ...`) | the branch or tag does not exist on GitHub (or is not pushed yet)                                                                                                                                          |
+| `... does not look like PySwitch: ... is missing`                                           | `pyswitch/` exists but has no `content/lib/pyswitch/` or `test/`                                                                                                                                           |
+| `Example not found: ...`                                                                    | the path given with `--example` does not exist in `examples/` of the branch                                                                                                                                |
+| `Unit tests failed: no firmware built`                                                      | the branch's unit tests fail; details in `output/logs/tests.txt`, coverage in `output/test_report/`                                                                                                        |
+| `No repository known for ...`                                                               | a library's `.mpy` files contain no repository URL: add it to `FALLBACK_REPOSITORIES` in `docker/builder/constants.py`                                                                                     |
+| `Source of ... not found`                                                                   | a library's repository has no source file with that name at that version                                                                                                                                   |
+| `Firmware build failed`                                                                     | details in `output/logs/build_release.log` (for example: the firmware does not fit into flash)                                                                                                             |
+| No RAM measurement                                                                          | it is off by default: use `--measure`; with it, the branch has no memory monitoring lines in `process.py` (section 8)                                                                                      |
+| `BUILD FAILED ...: unexpected error` with a traceback                                       | an error in the build program itself: please report it with the output                                                                                                                                     |
+| Warning `Docker Compose is configured to build using Bake, but buildx isn't installed`      | harmless; Docker builds the image without the buildx plugin                                                                                                                                                |
+| First run takes long                                                                        | the Docker image is built once (about 30 minutes)                                                                                                                                                          |
+| `... is not inside the project folder`                                                      | `--sources` and `--output` must be inside this folder (the container only sees this folder)                                                                                                                |
 
 All files created by the build belong to your user, although the build runs as root inside the container.
 
