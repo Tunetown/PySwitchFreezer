@@ -1,4 +1,4 @@
-# PySwitch build: optimized UF2
+# Build an optimized UF2 image from PySwitch
 
 Builds an optimized UF2 image from PySwitch: one command fetches a branch of [PySwitch](https://github.com/Tunetown/PySwitch) from GitHub, runs its unit tests, builds a CircuitPython 7.3.1 firmware with PySwitch and its libraries already inside, and collects everything you need to copy onto the device. It also measures how much RAM is left on an emulated device and writes a report.
 
