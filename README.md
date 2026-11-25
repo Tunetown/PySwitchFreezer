@@ -22,7 +22,7 @@ Builds an optimized UF2 image from PySwitch: one command fetches a branch of [Py
 14. [Limitations](#14-limitations)
 
 
-## 1. Quick start
+## 1. Quick start 
 
     ./build
 
@@ -57,6 +57,7 @@ Works on x86_64 and ARM64 (aarch64) machines. `git`, Python and the compilers ar
 | `<branch>`           | branch or tag of PySwitch to fetch into `pyswitch/`. Without it, an existing `pyswitch/` is built as it is (nothing is fetched or changed); if there is none, `main` is fetched                            |
 | `--measure`          | also measure the free RAM on an emulated RP2040 (section 8; off by default, takes about 2 minutes more)                                                                                                    |
 | `--example <path>`   | measure the RAM with an example configuration instead of the default one (path relative to `examples/` of PySwitch; switches on `--measure`); the drive files in the output keep the default configuration |
+| `--repository <url>` | Git repository to fetch PySwitch from (default: the official PySwitch repository), e.g. your fork                                                                                                          |
 | `--force`            | with a branch: replace `pyswitch/` even if it was not created by the build (it contains your own files: section 12)                                                                                        |
 | `--sources <folder>` | use another sources folder (default `pyswitch/`; must be inside this project folder)                                                                                                                       |
 | `--output <folder>`  | use another output folder (default `output/`; must be inside this project folder)                                                                                                                          |
@@ -67,6 +68,7 @@ Examples:
     ./build                                            # pyswitch/ as it is (or main if there is no pyswitch/)
     ./build dev_midi                                   # fetch another branch into pyswitch/
     ./build v2.4.10                                    # fetch a tag
+    ./build --repository https://github.com/me/PySwitch.git my_branch   # a branch of a fork
     ./build --measure                                  # with RAM measurement
     ./build --example "Kemper Profiler/MIDICaptain 10/Expression Pedals and Wheel"
 
@@ -85,13 +87,14 @@ The build stops with `BUILD FAILED` (and builds nothing more) if the branch does
 
 Everything is written to `output/` (deleted and created again on every run):
 
-| File / folder  | Content                                                                                                                                                                                                                                      |
-|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `PySwitch.uf2` | the firmware: CircuitPython 7.3.1 with PySwitch and its libraries built in                                                                                                                                                                   |
-| `drive/`       | the files for the device drive (section 5)                                                                                                                                                                                                   |
-| `REPORT.md`    | sources (branch, commit), unit tests, flash use, frozen modules with versions, drive files, RAM measurement                                                                                                                                  |
-| `logs/`        | details: `tests.txt` (unit test output), `build_release.log` (firmware build), `frozen_modules.json` (every frozen module with its source); with `--measure` also `build_debug.log` (debug firmware) and `measurement.txt` (RAM measurement) |
-| `test_report/` | coverage report as HTML (open `index.html` in the browser) of the tests that ran last: PySwitch's unit tests (`./build`) or the tests of the build program (`./test`, section 10)                                                            |
+| File / folder     | Content                                                                                                                                                                                                                                      |
+|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `PySwitch.uf2`    | the firmware: CircuitPython 7.3.1 with PySwitch and its libraries built in                                                                                                                                                                   |
+| `drive/`          | the files for the device drive (section 5)                                                                                                                                                                                                   |
+| `REPORT.md`       | sources (branch, commit), unit tests, flash use, frozen modules with versions, drive files, RAM measurement                                                                                                                                  |
+| `bootloader.html` | page that puts the device into bootloader mode (section 5)                                                                                                                                                                                   |
+| `logs/`           | details: `tests.txt` (unit test output), `build_release.log` (firmware build), `frozen_modules.json` (every frozen module with its source); with `--measure` also `build_debug.log` (debug firmware) and `measurement.txt` (RAM measurement) |
+| `test_report/`    | coverage report as HTML (open `index.html` in the browser) of the tests that ran last: PySwitch's unit tests (`./build`) or the tests of the build program (`./test`, section 10)                                                            |
 
 The PySwitch sources of the build are in `pyswitch/` (a shallow clone of the branch; replaced on the next run).
 
@@ -102,10 +105,10 @@ For the PaintAudio MIDI Captain (all models). PySwitch runs on PaintAudio's firm
 
 **Two modes** (connect the device via USB, then switch it on):
 
-| Mode       | How                                                                                                                                                                             | Drive on the computer                      |
-|------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------|
-| USB setup  | hold switch 1 while switching on                                                                                                                                                | `MIDICAPTAIN` (or `CIRCUITPY`): your files |
-| Bootloader | open `MIDICAPTAINBOOT.HTML` from a PaintAudio firmware 5 package ([downloads](https://paintaudio.com/pages/surports)) in Chrome or Edge, click BOOT, select the device ("Pico") | `RPI-RP2`: takes a firmware (`.uf2`)       |
+| Mode       | How                                                                                           | Drive on the computer                      |
+|------------|-----------------------------------------------------------------------------------------------|--------------------------------------------|
+| USB setup  | hold switch 1 while switching on                                                              | `MIDICAPTAIN` (or `CIRCUITPY`): your files |
+| Bootloader | open `output/bootloader.html` in Chrome or Edge, click the button, select the device ("Pico") | `RPI-RP2`: takes a firmware (`.uf2`)       |
 
 Bootloader mode without the browser (Linux): `stty -F /dev/ttyACM0 1200`. It cannot damage anything; switching the device off and on leaves it.
 
@@ -136,7 +139,7 @@ Other RP2040 boards: bootloader mode usually with the BOOT button held while con
 | 3    | **Firmware**: PySwitch and the libraries it imports are compiled into CircuitPython 7.3.1 → `PySwitch.uf2`; with `--measure` also a second, debug firmware with PySwitch's memory monitoring switched on (only for the measurement, not in the output) |
 | 4    | **Drive files**: the `content/` folder of PySwitch without the built-in modules → `drive/`                                                                                                                                                             |
 | 5    | **RAM measurement** (only with `--measure`): the debug firmware and the drive files run on an emulated RP2040                                                                                                                                          |
-| 6    | **Report**: `REPORT.md`                                                                                                                                                                                                                                |
+| 6    | **Report**: `REPORT.md`; `bootloader.html` is copied to the output                                                                                                                                                                                     |
 
 **CircuitPython itself is not changed**, except for the names of the USB MIDI port, which are set like in PaintAudio's firmware ("Midi Captain- MIDI"; setting in `docker/builder/constants.py`). Building Python modules into the firmware ("freezing") is a standard feature of the CircuitPython build, also used by official boards for their libraries. The firmware is a complete CircuitPython 7.3.1; PySwitch and its libraries are additions.
 

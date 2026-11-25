@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bootloader mode</title>
+<style>
+    body { font: 16px/1.5 system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #1f2430; }
+    button { font-size: 18px; padding: 10px 28px; border-radius: 8px; border: 0; background: #3b5bdb; color: #fff; cursor: pointer; }
+    button:disabled { opacity: 0.5; }
+    #log { margin-top: 16px; padding: 10px; border-radius: 8px; background: #f1f3f5; white-space: pre-wrap; min-height: 1.5em; }
+    .ok { color: #2b8a3e; } .error { color: #c92a2a; }
+</style>
+</head>
+<body>
+<h1>Bootloader mode</h1>
+<p>Puts a CircuitPython device (e.g. a PaintAudio MIDI Captain) into bootloader mode, so a firmware (<code>.uf2</code>) can be copied to it.</p>
+<ol>
+    <li>Use <b>Chrome</b> or <b>Edge</b> (other browsers do not support this). Open this file directly from your computer.</li>
+    <li>Connect the device via USB and switch it on normally (no switch held).</li>
+    <li>Click the button and select the device in the list (usually named <b>Pico</b> or <b>CircuitPython</b>), then <b>Connect</b>.</li>
+    <li>The device restarts and a drive named <b>RPI-RP2</b> appears. Copy the <code>.uf2</code> file onto it; the device restarts with the new firmware.</li>
+</ol>
+<button id="boot" type="button">Bootloader mode</button>
+<div id="log"></div>
+
+<script>
+// Opens the serial port of the device at 1200 baud and closes it again: CircuitPython and the PaintAudio firmware
+// restart into the RP2040's bootloader (drive RPI-RP2) when the port is closed at this speed.
+const log = document.getElementById('log');
+const button = document.getElementById('boot');
+
+function show(text, type) {
+    log.textContent = text;
+    log.className = type || '';
+}
+
+button.addEventListener('click', async () => {
+    if (!('serial' in navigator)) {
+        show('This browser does not support Web Serial. Please use Chrome or Edge.', 'error');
+        return;
+    }
+    let port;
+    try {
+        port = await navigator.serial.requestPort();
+    } catch (e) {
+        show('No device selected.', 'error');
+        return;
+    }
+    button.disabled = true;
+    try {
+        await port.open({ baudRate: 1200 });
+        show('Connected, switching to bootloader mode ...');
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        try {
+            await port.setSignals({ dataTerminalReady: false });
+        } catch (e) {
+            // some systems do not allow this; closing the port drops the signal too
+        }
+        await port.close();
+        show('Done. A drive named RPI-RP2 should appear within a few seconds: copy the .uf2 file onto it.\n'
+            + 'If it does not appear: switch the device off and on and try again.', 'ok');
+    } catch (e) {
+        show('Error: ' + e.message + '\nClose other programs that use the device (e.g. a serial console or the PySwitch emulator) and try again.', 'error');
+    } finally {
+        button.disabled = false;
+    }
+});
+</script>
+</body>
+</html>

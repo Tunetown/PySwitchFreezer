@@ -9,6 +9,7 @@ PROJECT_FOLDER = "/work"                                   # project folder (rep
 SOURCES_FOLDER = "/work/pyswitch"                          # PySwitch sources, fetched (not versioned)
 OUTPUT_FOLDER = "/work/output"                             # build results (not versioned)
 SCRIPTS_FOLDER = "/work/docker/scripts"                    # measure.mts, ramprobe.py
+ASSETS_FOLDER = "/work/docker/assets"                      # files copied into the output (bootloader.html)
 
 # File marking a sources folder created by the build (other folders are not deleted without --force)
 SOURCES_MARKER = ".pyswitch_build"
@@ -17,6 +18,7 @@ SOURCES_MARKER = ".pyswitch_build"
 FIRMWARE_NAME = "PySwitch.uf2"                             # firmware in the output folder
 DRIVE_FOLDER_NAME = "drive"                                # drive files in the output folder
 REPORT_NAME = "REPORT.md"                                  # report in the output folder
+BOOTLOADER_NAME = "bootloader.html"                        # page that puts the device into bootloader mode (output folder)
 LOGS_FOLDER_NAME = "logs"                                  # logs in the output folder
 TEST_REPORT_FOLDER_NAME = "test_report"                    # coverage report (HTML) of the unit tests in the output folder
 

@@ -5,6 +5,7 @@ from builder import main, shell, frozen, sources, unit_tests, firmware
 from builder.files import read_text
 from .helpers import TempTestCase
 
+ASSETS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
 SOURCES = sources.Sources("/work/pyswitch", True, "main", "abc1234", "2.4.10")
 
 class TestMain(TempTestCase):
@@ -23,7 +24,8 @@ class TestMain(TempTestCase):
     # Runs main.build with all steps mocked. Returns the mocks.
     def run_build(self, tests_ok = True, debug_possible = True, html = None, extra = ("--measure",)):
         mocks = {}
-        with patch("builder.sources.prepare", return_value = SOURCES) as mocks["sources"], \
+        with patch("builder.main.ASSETS_FOLDER", ASSETS), \
+             patch("builder.sources.prepare", return_value = SOURCES) as mocks["sources"], \
              patch("builder.unit_tests.run", return_value = unit_tests.TestResult(tests_ok, 3, "90%" if tests_ok else "", "output", html)) as mocks["tests"], \
              patch("builder.frozen.prepare", return_value = [{ "package": "pyswitch", "version": "" }, { "package": "lib_a", "version": "1.2.3" }]) as mocks["prepare"], \
              patch("builder.frozen.debug_copy") as mocks["debug_copy"], \
@@ -40,6 +42,7 @@ class TestMain(TempTestCase):
         m = self.run_build()
         self.assertEqual(m["result"], 0)
         m["sources"].assert_called_once_with("https://github.com/Tunetown/PySwitch.git", None, self.path("src"), force = False)
+        self.assertTrue(os.path.exists(self.path("out", "bootloader.html")))
         self.assertEqual(m["firmware"].call_count, 2)                    # release and debug firmware
         self.assertEqual(m["prepare"].call_count, 1)                      # library sources fetched once
         m["debug_copy"].assert_called_once_with(self.path("out", ".work", "frozen_release"), self.path("out", ".work", "frozen_debug"))
@@ -49,6 +52,15 @@ class TestMain(TempTestCase):
         self.assertTrue(os.path.exists(self.path("out", "logs", "tests.txt")))
         self.assertFalse(os.path.exists(self.path("out", ".work")))
         self.assertEqual(m["tests"].call_args.kwargs["html"], self.path("out", "test_report"))
+
+    def test_repository_option(self):
+        args = main.parse_arguments(["--repository", "https://github.com/me/PySwitch.git", "dev"])
+        self.assertEqual((args.repository, args.branch), ("https://github.com/me/PySwitch.git", "dev"))
+        self.assertEqual(main.parse_arguments([]).repository, "https://github.com/Tunetown/PySwitch.git")
+        with patch("builder.main.REPOSITORY_URL", "unused"):
+            m = self.run_build(extra = ("--repository", "https://github.com/me/PySwitch.git"))
+        self.assertEqual(m["sources"].call_args.args[0], "https://github.com/me/PySwitch.git")
+        self.assertEqual(m["report"].call_args.args[0], "https://github.com/me/PySwitch.git")
 
     def test_measurement_off_by_default(self):
         m = self.run_build(extra = ())

@@ -6,8 +6,9 @@ import sys
 import traceback
 
 from . import drive, files, firmware, frozen, measurement, output, report, shell, sources, unit_tests
-from .constants import (DEFAULT_BRANCH, DRIVE_FOLDER_NAME, FIRMWARE_NAME, LOGS_FOLDER_NAME, MEASURE_SECONDS, OUTPUT_FOLDER,
-                        PROJECT_FOLDER, REPORT_NAME, REPOSITORY_URL, SOURCES_FOLDER, TEST_REPORT_FOLDER_NAME)
+from .constants import (ASSETS_FOLDER, BOOTLOADER_NAME, DEFAULT_BRANCH, DRIVE_FOLDER_NAME, FIRMWARE_NAME, LOGS_FOLDER_NAME,
+                        MEASURE_SECONDS, OUTPUT_FOLDER, PROJECT_FOLDER, REPORT_NAME, REPOSITORY_URL, SOURCES_FOLDER,
+                        TEST_REPORT_FOLDER_NAME)
 
 # Number of steps (for the progress output)
 _STEPS = 6
@@ -17,6 +18,7 @@ def parse_arguments(argv):
     parser = argparse.ArgumentParser(prog = "build", description = "Builds an optimized UF2 image from PySwitch.")
     parser.add_argument("branch", nargs = "?", default = None,
                         help = f"branch or tag of PySwitch to fetch (default: use the existing sources folder as it is; if there is none, fetch { DEFAULT_BRANCH })")
+    parser.add_argument("--repository", default = REPOSITORY_URL, help = f"Git repository to fetch PySwitch from (default: { REPOSITORY_URL })")
     parser.add_argument("--force", action = "store_true", help = "with a branch: replace the sources folder even if it was not created by the build")
     parser.add_argument("--sources", default = SOURCES_FOLDER, help = "sources folder (inside the project folder)")
     parser.add_argument("--output", default = OUTPUT_FOLDER, help = "output folder (inside the project folder)")
@@ -59,7 +61,7 @@ def build(args, progress = None):
     work = os.path.join(output_folder, ".work")
 
     progress.step("PySwitch sources")
-    src = sources.prepare(REPOSITORY_URL, args.branch, args.sources, force = args.force)
+    src = sources.prepare(args.repository, args.branch, args.sources, force = args.force)
     content = os.path.join(args.sources, "content")
 
     shutil.rmtree(output_folder, ignore_errors = True)
@@ -122,10 +124,12 @@ def build(args, progress = None):
         output.info("Skipped (no debug firmware)")
 
     progress.step("Report")
-    text = report.text(REPOSITORY_URL, src, tests, flash, modules, entries, result, args.example or "default configuration (content/)")
+    text = report.text(args.repository, src, tests, flash, modules, entries, result, args.example or "default configuration (content/)")
     files.write_text(os.path.join(output_folder, REPORT_NAME), text)
+    shutil.copy(os.path.join(ASSETS_FOLDER, BOOTLOADER_NAME), os.path.join(output_folder, BOOTLOADER_NAME))
     shutil.rmtree(work, ignore_errors = True)
     output.info(f"{ _show(output_folder) }/{ REPORT_NAME }")
+    output.info(f"{ _show(output_folder) }/{ BOOTLOADER_NAME } (puts the device into bootloader mode)")
     progress.done()
     return 0
 
@@ -146,7 +150,7 @@ def main(argv = None):
     try:
         code = build(args, progress)
         output.block(f"\nBUILD OK in { timer.text() }: { _show(os.path.abspath(args.output)) }/\n"
-                     f"  { FIRMWARE_NAME } -> RPI-RP2 drive (bootloader mode), contents of { DRIVE_FOLDER_NAME }/ -> device drive (MIDICAPTAIN or CIRCUITPY). Report: { REPORT_NAME }, see README.md")
+                     f"  { FIRMWARE_NAME } -> RPI-RP2 drive (bootloader mode: open { BOOTLOADER_NAME } in Chrome/Edge), contents of { DRIVE_FOLDER_NAME }/ -> device drive (MIDICAPTAIN or CIRCUITPY). Report: { REPORT_NAME }, see README.md")
     except shell.BuildError as e:
         output.block(f"\nBUILD FAILED in step { progress.number }/{ _STEPS } ({ progress.text }) after { timer.text() }:\n{ e }")
     except Exception as e:
